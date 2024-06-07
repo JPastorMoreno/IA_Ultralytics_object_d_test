@@ -6,12 +6,14 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import torch
 from shapely.geometry import Polygon
 from shapely.geometry.point import Point
 from ultralytics import YOLOv10
 from ultralytics.utils.files import increment_path
 from ultralytics.utils.plotting import Annotator, colors
 
+torch.cuda.is_available()
 track_history = defaultdict(list)
 
 current_region = None
@@ -41,8 +43,8 @@ class Yolov8_Video():
         #self.color_palette = np.random.uniform(0, 255, size=(len(self.classes), 3))
     def run(
     model="Models/yolov10n.pt",
-    source="Images/people.mp4",
-    device="cpu",
+    source="Londres.mp4",
+    device="0",
     view_img=True,
     save_img=True,
     exist_ok=False,
@@ -77,7 +79,7 @@ class Yolov8_Video():
             raise FileNotFoundError(f"Source path '{source}' does not exist.")
 
         # Setup Model
-        model = YOLOv10("yolov10l.pt")
+        model = YOLOv10("yolov8n.pt")
         model.to("cuda") if device == "0" else model.to("cpu")
         #model.fuse()
         
@@ -104,7 +106,7 @@ class Yolov8_Video():
             vid_frame_count += 1
 
             # Extract the results
-            results = model.track(frame, persist=True, classes=list(names),conf=0.1, iou=0.9,save=True)
+            results = model.track(frame, persist=True, classes=list(names),conf=0.9, iou=0.9)
 
             if results[0].boxes.id is not None:
                 boxes = results[0].boxes.xyxy.cpu()
@@ -114,7 +116,7 @@ class Yolov8_Video():
                 annotator = Annotator(frame, line_width=line_thickness, example=str(names))
 
                 for box, track_id, cls in zip(boxes, track_ids, clss):
-                    annotator.box_label(box, str(names[cls]), color=colors(cls, True))
+                    annotator.box_label(box, f'{str(names[cls])}:{track_id}', color=colors(cls, True))
                     bbox_center = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2  # Bbox center
 
                     track = track_history[track_id]  # Tracking Lines plot
